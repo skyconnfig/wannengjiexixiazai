@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试页面 - 后端连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 后端连接调试页面</h1>
+    
+    <div class="container">
+        <h2>📊 系统状态</h2>
+        <div id="systemStatus">正在检查系统状态...</div>
+        <button onclick="checkSystemStatus()">重新检查</button>
+    </div>
+
+    <div class="test-grid">
+        <div class="container">
+            <h3>🏥 健康检查</h3>
+            <button onclick="testHealth()">测试健康检查</button>
+            <div id="healthResult"></div>
+        </div>
+
+        <div class="container">
+            <h3>🎬 视频解析测试</h3>
+            <input type="text" id="testUrl" placeholder="输入Bilibili视频URL" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+            <button onclick="testVideoExtract()">测试解析</button>
+            <div id="extractResult"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 实时日志</h2>
+        <button onclick="clearLog()">清空日志</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔗 端点测试结果</h2>
+        <button onclick="testAllEndpoints()">测试所有端点</button>
+        <div id="endpointResults"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = {
+                'info': '#0ff',
+                'success': '#0f0',
+                'error': '#f00',
+                'warning': '#ff0'
+            }[type] || '#0ff';
+            
+            log.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+
+        async function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            statusDiv.innerHTML = '正在检查...';
+            
+            addLog('开始系统状态检查', 'info');
+            
+            const checks = [
+                { name: 'JavaScript支持', test: () => true },
+                { name: 'Fetch API支持', test: () => typeof fetch !== 'undefined' },
+                { name: 'JSON支持', test: () => typeof JSON !== 'undefined' },
+                { name: '本地存储支持', test: () => typeof localStorage !== 'undefined' }
+            ];
+            
+            let results = [];
+            
+            for (const check of checks) {
+                try {
+                    const result = check.test();
+                    results.push(`✅ ${check.name}: ${result ? '支持' : '不支持'}`);
+                    addLog(`${check.name}: ${result ? '支持' : '不支持'}`, result ? 'success' : 'error');
+                } catch (error) {
+                    results.push(`❌ ${check.name}: 错误`);
+                    addLog(`${check.name}: 错误 - ${error.message}`, 'error');
+                }
+            }
+            
+            statusDiv.innerHTML = `<div class="info">${results.join('<br>')}</div>`;
+        }
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = '<div class="info">正在检查健康状态...</div>';
+            
+            const endpoints = [
+                'http://localhost:5001/api/health',
+                'http://localhost:5000/api/health'
+            ];
+            
+            addLog('开始健康检查测试', 'info');
+            
+            for (const endpoint of endpoints) {
+                try {
+                    addLog(`尝试连接: ${endpoint}`, 'info');
+                    const response = await fetch(endpoint);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        resultDiv.innerHTML = `
+                            <div class="success">
+                                <h4>✅ 服务正常 (${endpoint})</h4>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                        addLog(`健康检查成功: ${endpoint}`, 'success');
+                        return;
+                    } else {
+                        addLog(`${endpoint} 返回 HTTP ${response.status}`, 'warning');
+                    }
+                } catch (error) {
+                    addLog(`${endpoint} 连接失败: ${error.message}`, 'error');
+                }
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="error">
+                    <h4>❌ 所有健康检查端点都失败</h4>
+                    <p>请确保后端服务已启动</p>
+                    <p>尝试运行: <code>python backend/yt-dlp-server.py</code></p>
+                    <p>或者: <code>python simple-server.py</code></p>
+                </div>
+            `;
+        }
+
+        async function testVideoExtract() {
+            const url = document.getElementById('testUrl').value.trim();
+            const resultDiv = document.getElementById('extractResult');
+            
+            if (!url) {
+                resultDiv.innerHTML = '<div class="error">请输入视频URL</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="info">正在解析视频...</div>';
+            addLog(`开始视频解析测试: ${url}`, 'info');
+            
+            const endpoints = [
+                'http://localhost:5001/api/extract',
+                'http://localhost:5000/api/extract'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    addLog(`尝试解析端点: ${endpoint}`, 'info');
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ url: url })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        resultDiv.innerHTML = `
+                            <div class="success">
+                                <h4>✅ 解析成功 (${endpoint})</h4>
+                                <p><strong>标题:</strong> ${data.title}</p>
+                                <p><strong>时长:</strong> ${data.duration || '未知'}秒</p>
+                                <p><strong>格式数量:</strong> ${data.formats ? data.formats.length : 0}</p>
+                                <details>
+                                    <summary>详细信息</summary>
+                                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                                </details>
+                            </div>
+                        `;
+                        addLog(`视频解析成功: ${data.title}`, 'success');
+                        return;
+                    } else {
+                        const errorData = await response.json();
+                        addLog(`${endpoint} 解析失败: ${errorData.error}`, 'error');
+                    }
+                } catch (error) {
+                    addLog(`${endpoint} 请求失败: ${error.message}`, 'error');
+                }
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="error">
+                    <h4>❌ 所有解析端点都失败</h4>
+                    <p>请检查后端服务是否正常运行</p>
+                </div>
+            `;
+        }
+
+        async function testAllEndpoints() {
+            const resultDiv = document.getElementById('endpointResults');
+            resultDiv.innerHTML = '<div class="info">正在测试所有端点...</div>';
+            
+            const endpoints = [
+                { url: 'http://localhost:5001/api/health', method: 'GET', name: '健康检查 (5001)' },
+                { url: 'http://localhost:5000/api/health', method: 'GET', name: '健康检查 (5000)' },
+                { url: 'http://localhost:5001/api/extract', method: 'POST', name: '视频解析 (5001)' },
+                { url: 'http://localhost:5000/api/extract', method: 'POST', name: '视频解析 (5000)' }
+            ];
+            
+            addLog('开始测试所有端点', 'info');
+            
+            let results = [];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const startTime = Date.now();
+                    const options = {
+                        method: endpoint.method,
+                        headers: endpoint.method === 'POST' ? {
+                            'Content-Type': 'application/json',
+                        } : {},
+                        body: endpoint.method === 'POST' ? JSON.stringify({ 
+                            url: 'https://www.bilibili.com/video/BV1Jt52zDE3H' 
+                        }) : undefined
+                    };
+                    
+                    const response = await fetch(endpoint.url, options);
+                    const responseTime = Date.now() - startTime;
+                    
+                    if (response.ok) {
+                        results.push(`✅ ${endpoint.name} - ${responseTime}ms`);
+                        addLog(`${endpoint.name} 成功 (${responseTime}ms)`, 'success');
+                    } else {
+                        results.push(`❌ ${endpoint.name} - HTTP ${response.status}`);
+                        addLog(`${endpoint.name} 失败 - HTTP ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    results.push(`❌ ${endpoint.name} - ${error.message}`);
+                    addLog(`${endpoint.name} 错误: ${error.message}`, 'error');
+                }
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="info">
+                    <h4>端点测试结果:</h4>
+                    <ul>
+                        ${results.map(result => `<li>${result}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            addLog('调试页面已加载', 'success');
+            checkSystemStatus();
+            
+            // 设置测试URL默认值
+            document.getElementById('testUrl').value = 'https://www.bilibili.com/video/BV1Jt52zDE3H?spm_id_from=333.788.player.switch';
+            
+            // 自动测试健康检查
+            setTimeout(testHealth, 1000);
+        };
+    </script>
+</body>
+</html>

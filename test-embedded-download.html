@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>嵌入式视频下载测试</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .iframe-container {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 10px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .control-btn:hover {
+            background: #5a67d8;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #4a5568;">🎬 嵌入式视频下载测试</h1>
+        <p style="text-align: center; color: #666;">测试嵌入式播放器的下载功能</p>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h3>📺 Bilibili视频测试</h3>
+            <p>这里将加载一个Bilibili嵌入式播放器，然后测试下载功能</p>
+            <button onclick="loadBilibiliVideo()" class="control-btn">加载Bilibili视频</button>
+            <button onclick="testDownload()" class="control-btn">测试下载功能</button>
+            <div id="status"></div>
+        </div>
+
+        <div class="video-container" id="videoContainer">
+            <div style="color: #666; text-align: center;">
+                <p>📺 视频将在这里显示</p>
+                <p>点击"加载Bilibili视频"开始测试</p>
+            </div>
+        </div>
+
+        <div class="controls" id="customControls" style="display: none;">
+            <button id="downloadBtn" class="control-btn">⬇ 下载</button>
+            <button onclick="clearVideo()" class="control-btn">清空</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h3>📋 测试说明</h3>
+            <ol>
+                <li>点击"加载Bilibili视频"按钮加载嵌入式播放器</li>
+                <li>视频加载完成后，点击"测试下载功能"或下载按钮</li>
+                <li>应该会弹出下载选项模态框</li>
+                <li>模态框中包含多种下载方法和工具</li>
+                <li>可以复制命令或尝试后端API下载</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // 模拟全局变量和函数
+        let currentMediaInfo = null;
+        
+        // 模拟elements对象
+        const elements = {
+            customControls: document.getElementById('customControls'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            placeholder: document.querySelector('.video-container')
+        };
+
+        // 加载Bilibili视频
+        function loadBilibiliVideo() {
+            const container = document.getElementById('videoContainer');
+            const testUrl = 'https://www.bilibili.com/video/BV1Jt52zDE3H';
+            const embedUrl = 'https://player.bilibili.com/player.html?bvid=BV1Jt52zDE3H&autoplay=0';
+            
+            // 保存媒体信息
+            currentMediaInfo = {
+                url: embedUrl,
+                title: 'Bilibili测试视频 - BV1Jt52zDE3H',
+                originalUrl: testUrl,
+                platform: 'bilibili',
+                type: 'embedded'
+            };
+            
+            container.innerHTML = `
+                <div class="iframe-container">
+                    <iframe src="${embedUrl}" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                    </iframe>
+                </div>
+            `;
+            
+            // 显示控制栏
+            elements.customControls.style.display = 'flex';
+            
+            updateStatus('Bilibili视频已加载', 'success');
+        }
+
+        // 测试下载功能
+        function testDownload() {
+            if (!currentMediaInfo) {
+                updateStatus('请先加载视频', 'error');
+                return;
+            }
+            
+            updateStatus('正在显示下载选项...', 'info');
+            showEmbeddedVideoDownloadOptions(currentMediaInfo);
+        }
+
+        // 清空视频
+        function clearVideo() {
+            const container = document.getElementById('videoContainer');
+            container.innerHTML = `
+                <div style="color: #666; text-align: center;">
+                    <p>📺 视频将在这里显示</p>
+                    <p>点击"加载Bilibili视频"开始测试</p>
+                </div>
+            `;
+            elements.customControls.style.display = 'none';
+            currentMediaInfo = null;
+            updateStatus('视频已清空', 'info');
+        }
+
+        // 更新状态显示
+        function updateStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        // 模拟showNotification函数
+        function showNotification(message, type) {
+            updateStatus(message, type);
+            console.log(`[${type}] ${message}`);
+        }
+
+        // 模拟getPlatformName函数
+        function getPlatformName(platform) {
+            const platformNames = {
+                'bilibili': 'Bilibili',
+                'youtube': 'YouTube'
+            };
+            return platformNames[platform] || platform;
+        }
+
+        // 添加下载按钮事件
+        elements.downloadBtn.addEventListener('click', testDownload);
+
+        // 页面加载完成后的提示
+        window.onload = function() {
+            updateStatus('页面已加载，可以开始测试', 'info');
+        };
+    </script>
+
+    <!-- 引入主要的JavaScript文件中的下载功能 -->
+    <script>
+        // 嵌入式视频下载选项函数
+        function showEmbeddedVideoDownloadOptions(mediaInfo) {
+            console.log('显示嵌入式视频下载选项:', mediaInfo);
+            
+            const platform = mediaInfo.platform || 'unknown';
+            const title = mediaInfo.title || '未知视频';
+            const originalUrl = mediaInfo.originalUrl || mediaInfo.url;
+            
+            let downloadOptions = [];
+            let platformName = '';
+            let instructions = '';
+            
+            switch (platform) {
+                case 'bilibili':
+                    platformName = 'Bilibili';
+                    downloadOptions = [
+                        {
+                            name: 'yt-dlp',
+                            description: '推荐的命令行工具，支持多种格式',
+                            command: `yt-dlp "${originalUrl}"`,
+                            install: 'pip install yt-dlp',
+                            url: 'https://github.com/yt-dlp/yt-dlp'
+                        },
+                        {
+                            name: 'you-get',
+                            description: 'Python工具，专门支持中国视频网站',
+                            command: `you-get "${originalUrl}"`,
+                            install: 'pip install you-get',
+                            url: 'https://github.com/soimort/you-get'
+                        },
+                        {
+                            name: 'BBDown',
+                            description: '专门的Bilibili下载工具',
+                            command: `BBDown "${originalUrl}"`,
+                            install: '从GitHub下载可执行文件',
+                            url: 'https://github.com/nilaoda/BBDown'
+                        },
+                        {
+                            name: '后端API下载',
+                            description: '使用本地yt-dlp服务下载',
+                            command: '点击下方按钮尝试API下载',
+                            install: '确保后端服务正在运行',
+                            url: null,
+                            isAction: true
+                        }
+                    ];
+                    instructions = 'Bilibili视频由于版权保护，无法直接下载。推荐使用以下工具：';
+                    break;
+                    
+                default:
+                    platformName = '当前平台';
+                    downloadOptions = [
+                        {
+                            name: 'yt-dlp',
+                            description: '通用视频下载工具',
+                            command: `yt-dlp "${originalUrl}"`,
+                            install: 'pip install yt-dlp',
+                            url: 'https://github.com/yt-dlp/yt-dlp'
+                        }
+                    ];
+                    instructions = '嵌入式视频无法直接下载，推荐使用：';
+                    break;
+            }
+            
+            // 创建下载选项模态框
+            const modal = document.createElement('div');
+            modal.className = 'download-options-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📥 ${platformName}视频下载选项</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="video-info">
+                            <h4>📺 ${title}</h4>
+                            <p><strong>原始链接:</strong> <a href="${originalUrl}" target="_blank">${originalUrl}</a></p>
+                        </div>
+                        
+                        <div class="instructions">
+                            <p>${instructions}</p>
+                        </div>
+                        
+                        <div class="download-options">
+                            ${downloadOptions.map((option, index) => `
+                                <div class="download-option">
+                                    <div class="option-header">
+                                        <h4>${option.name}</h4>
+                                        <span class="option-description">${option.description}</span>
+                                    </div>
+                                    <div class="option-details">
+                                        <div class="command-section">
+                                            <strong>使用方法:</strong>
+                                            <div class="command-box">
+                                                <code>${option.command}</code>
+                                                <button onclick="copyToClipboard('${option.command.replace(/'/g, "\\'")}', this)" class="copy-btn">复制</button>
+                                            </div>
+                                        </div>
+                                        <div class="install-section">
+                                            <strong>安装方法:</strong> ${option.install}
+                                        </div>
+                                        ${option.url ? `
+                                            <div class="link-section">
+                                                <a href="${option.url}" target="_blank" class="external-link">📖 查看文档</a>
+                                            </div>
+                                        ` : ''}
+                                        ${option.isAction ? `
+                                            <div class="action-section">
+                                                <button onclick="tryBackendDownload('${originalUrl}', '${title}')" class="action-btn">🚀 尝试下载</button>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="modal-note">
+                            <h4>⚠️ 重要提醒</h4>
+                            <ul>
+                                <li>请遵守相关平台的使用条款和版权规定</li>
+                                <li>仅用于个人学习和研究目的</li>
+                                <li>使用第三方工具时注意安全</li>
+                                <li>某些视频可能需要登录或有地区限制</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 添加关闭事件
+            const closeBtn = modal.querySelector('.modal-close');
+            closeBtn.addEventListener('click', () => {
+                document.body.removeChild(modal);
+            });
+            
+            // 点击背景关闭
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+            
+            // ESC键关闭
+            const handleEsc = (e) => {
+                if (e.key === 'Escape') {
+                    document.body.removeChild(modal);
+                    document.removeEventListener('keydown', handleEsc);
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
+            
+            showNotification(`${platformName}视频下载选项已显示`, 'info');
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '已复制!';
+                button.style.background = '#48bb78';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 2000);
+                
+                showNotification('命令已复制到剪贴板', 'success');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                showNotification('复制失败，请手动复制', 'error');
+            });
+        }
+
+        // 尝试通过后端API下载
+        async function tryBackendDownload(url, title) {
+            showNotification('正在尝试通过后端API下载...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:5001/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        url: url,
+                        format_id: 'best'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        showNotification('下载请求已发送到后端服务', 'success');
+                        showNotification('文件将保存到后端服务的downloads目录', 'info');
+                    } else {
+                        throw new Error(data.error || '下载失败');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.error('后端下载失败:', error);
+                showNotification(`后端下载失败: ${error.message}`, 'error');
+                showNotification('请尝试使用命令行工具下载', 'warning');
+            }
+        }
+    </script>
+</body>
+</html>

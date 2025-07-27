@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线媒体播放器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>在线媒体播放器</h1>
+            <p>支持视频/音频播放、URL解析、文件下载</p>
+        </header>
+
+        <main class="main">
+            <!-- 输入区域 -->
+            <section class="input-section">
+                <div class="input-group">
+                    <input type="text" id="urlInput" placeholder="输入视频/音频链接或选择本地文件">
+                    <button id="parseBtn" class="btn btn-primary">解析</button>
+                    <button id="helpBtn" class="btn btn-secondary" title="查看支持的平台">?</button>
+                </div>
+                <div id="parseStatus" class="parse-status" style="display: none;">
+                    <span id="parseStatusText"></span>
+                    <div id="parseStatusIcon" class="status-icon"></div>
+                </div>
+                <div class="file-input-group">
+                    <input type="file" id="fileInput" accept="video/*,audio/*" multiple hidden>
+                    <button id="fileBtn" class="btn btn-secondary">选择文件</button>
+                    <span class="file-info">支持多文件选择</span>
+                </div>
+                
+                <!-- 解析状态显示 -->
+                <div id="parsingStatus" class="parsing-status" style="display: none;">
+                    <div class="parsing-icon">⏳</div>
+                    <span class="parsing-text">正在解析...</span>
+                </div>
+                
+                <!-- 支持的平台信息 -->
+                <div class="platform-info">
+                    <div class="platform-info-header">
+                        <span>支持的平台：</span>
+                        <button id="togglePlatformInfo" class="info-toggle">ℹ️</button>
+                    </div>
+                    <div id="platformDetails" class="platform-details" style="display: none;">
+                        <div class="platform-item">
+                            <strong>YouTube:</strong> youtube.com, youtu.be
+                        </div>
+                        <div class="platform-item">
+                            <strong>Bilibili:</strong> bilibili.com, b23.tv (嵌入式播放器支持)
+                        </div>
+                        <div class="platform-item">
+                            <strong>抖音:</strong> douyin.com (提供下载建议)
+                        </div>
+                        <div class="platform-item">
+                            <strong>直接链接:</strong> MP4, WebM, MP3, WAV 等格式
+                        </div>
+                    </div>
+                    
+                    <!-- 键盘快捷键说明 -->
+                    <div class="keyboard-shortcuts">
+                        <h4>键盘快捷键</h4>
+                        <div class="shortcuts-grid">
+                            <div class="shortcut-item">
+                                <kbd>空格</kbd> <span>播放/暂停</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>N</kbd> <span>下一首</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>P</kbd> <span>上一首</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>S</kbd> <span>随机播放</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>L</kbd> <span>循环模式</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>←/→</kbd> <span>快退/快进</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <kbd>↑/↓</kbd> <span>音量调节</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 拖拽上传区域 -->
+                <div id="dropZone" class="drop-zone">
+                    <div class="drop-zone-content">
+                        <div class="drop-icon">📁</div>
+                        <p>拖拽文件到此处上传</p>
+                        <p class="drop-hint">支持 MP4, WebM, MP3, WAV 等格式</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 播放器区域 -->
+            <section class="player-section">
+                <div class="media-container">
+                    <video id="videoPlayer" class="media-player" controls style="display: none;">
+                        您的浏览器不支持视频播放
+                    </video>
+                    <audio id="audioPlayer" class="media-player" controls style="display: none;">
+                        您的浏览器不支持音频播放
+                    </audio>
+                    <div id="placeholder" class="placeholder">
+                        <div class="placeholder-content">
+                            <div class="placeholder-icon">🎵</div>
+                            <p>请选择媒体文件或输入链接开始播放</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 自定义控制栏 -->
+                <div class="controls" id="customControls" style="display: none;">
+                    <div class="control-row">
+                        <button id="playPauseBtn" class="control-btn">
+                            <span class="play-icon">▶</span>
+                            <span class="pause-icon" style="display: none;">⏸</span>
+                        </button>
+                        
+                        <div class="progress-container">
+                            <input type="range" id="progressBar" class="progress-bar" min="0" max="100" value="0">
+                            <div class="time-display">
+                                <span id="currentTime">00:00</span> / <span id="duration">00:00</span>
+                            </div>
+                        </div>
+
+                        <div class="volume-container">
+                            <button id="muteBtn" class="control-btn">🔊</button>
+                            <input type="range" id="volumeBar" class="volume-bar" min="0" max="100" value="100">
+                        </div>
+
+                        <button id="downloadBtn" class="control-btn" title="下载">⬇</button>
+                        <button id="fullscreenBtn" class="control-btn" title="全屏">⛶</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 播放列表区域 -->
+            <section class="playlist-section">
+                <div class="playlist-header">
+                    <h3>播放列表</h3>
+                    <div class="playlist-actions">
+                        <button id="downloadAllBtn" class="btn btn-small" title="下载全部">⬇ 全部</button>
+                        <button id="clearPlaylistBtn" class="btn btn-small">清空</button>
+                    </div>
+                </div>
+                <ul id="playlist" class="playlist">
+                    <!-- 播放列表项将通过JavaScript动态添加 -->
+                </ul>
+            </section>
+
+            <!-- 状态提示区域 -->
+            <div id="notification" class="notification" style="display: none;">
+                <span id="notificationText"></span>
+                <button id="closeNotification" class="close-btn">×</button>
+            </div>
+
+            <!-- 加载指示器 -->
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p id="loadingText">正在处理...</p>
+            </div>
+
+            <!-- 下载进度模态框 -->
+            <div id="downloadModal" class="download-modal" style="display: none;">
+                <div class="download-modal-content">
+                    <div class="download-header">
+                        <h3>下载进度</h3>
+                        <button id="cancelDownload" class="close-btn">×</button>
+                    </div>
+                    <div class="download-body">
+                        <div class="download-info">
+                            <div class="download-filename" id="downloadFilename">文件名</div>
+                            <div class="download-size" id="downloadSize">大小: 计算中...</div>
+                        </div>
+                        <div class="download-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" id="downloadProgressFill"></div>
+                            </div>
+                            <div class="progress-text">
+                                <span id="downloadPercent">0%</span>
+                                <span id="downloadSpeed">0 KB/s</span>
+                            </div>
+                        </div>
+                        <div class="download-status" id="downloadStatus">准备下载...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 帮助模态框 -->
+            <div id="helpModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>支持的平台</h3>
+                        <button id="closeHelpModal" class="close-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="platform-list">
+                            <div class="platform-item">
+                                <h4>🎬 YouTube</h4>
+                                <p>支持 youtube.com 和 youtu.be 链接</p>
+                                <small>示例: https://www.youtube.com/watch?v=VIDEO_ID</small>
+                            </div>
+                            <div class="platform-item">
+                                <h4>📺 Bilibili</h4>
+                                <p>支持 bilibili.com 和 b23.tv 链接</p>
+                                <small>示例: https://www.bilibili.com/video/BV1234567890</small>
+                            </div>
+                            <div class="platform-item">
+                                <h4>🔗 直接链接</h4>
+                                <p>支持直接的媒体文件链接</p>
+                                <small>支持格式: MP4, WebM, OGG, MP3, WAV, M4A</small>
+                            </div>
+                        </div>
+                        <div class="help-note">
+                            <p><strong>注意:</strong> 由于浏览器安全限制，某些平台可能需要额外的API支持才能正常解析。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="test-connection.js"></script>
+</body>
+</html>

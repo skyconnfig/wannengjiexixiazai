@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后端服务测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>yt-dlp 后端服务测试</h1>
+    
+    <div class="test-section info">
+        <h3>服务状态检查</h3>
+        <button onclick="testHealth()">检查健康状态</button>
+        <button onclick="testExtract()">测试视频解析</button>
+        <div id="healthResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>视频URL测试</h3>
+        <input type="text" id="testUrl" placeholder="输入Bilibili视频URL" style="width: 60%; padding: 8px;">
+        <button onclick="testVideoExtract()">测试解析</button>
+        <div id="extractResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>服务端点测试</h3>
+        <div id="endpointTests"></div>
+    </div>
+
+    <script>
+        const endpoints = [
+            'http://localhost:5001/api/health',
+            'http://localhost:5000/api/health',
+            'http://localhost:5001/api/extract',
+            'http://localhost:5000/api/extract'
+        ];
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = '<p>正在检查服务状态...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5001/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ 服务正常运行</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ 服务连接失败</h4>
+                        <p>错误: ${error.message}</p>
+                        <p>请确保后端服务已启动在 http://localhost:5001</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testExtract() {
+            const resultDiv = document.getElementById('healthResult');
+            const testUrl = 'https://www.bilibili.com/video/BV1Jt52zDE3H';
+            
+            resultDiv.innerHTML = '<p>正在测试视频解析...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5001/api/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: testUrl })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ 视频解析成功</h4>
+                            <p><strong>标题:</strong> ${data.title || '未知'}</p>
+                            <p><strong>时长:</strong> ${data.duration || '未知'}</p>
+                            <p><strong>格式数量:</strong> ${data.formats ? data.formats.length : 0}</p>
+                            <details>
+                                <summary>详细信息</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ 视频解析失败</h4>
+                        <p>错误: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testVideoExtract() {
+            const url = document.getElementById('testUrl').value.trim();
+            const resultDiv = document.getElementById('extractResult');
+            
+            if (!url) {
+                resultDiv.innerHTML = '<div class="error">请输入视频URL</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>正在解析视频...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5001/api/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ 解析成功</h4>
+                            <p><strong>标题:</strong> ${data.title}</p>
+                            <p><strong>上传者:</strong> ${data.uploader || '未知'}</p>
+                            <p><strong>时长:</strong> ${data.duration ? Math.floor(data.duration / 60) + ':' + (data.duration % 60).toString().padStart(2, '0') : '未知'}</p>
+                            <p><strong>可用格式:</strong> ${data.formats ? data.formats.length : 0} 个</p>
+                            <details>
+                                <summary>查看所有格式</summary>
+                                <pre>${JSON.stringify(data.formats, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ 解析失败</h4>
+                        <p>错误: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载时测试所有端点
+        window.onload = function() {
+            testAllEndpoints();
+        };
+
+        async function testAllEndpoints() {
+            const resultDiv = document.getElementById('endpointTests');
+            resultDiv.innerHTML = '<h4>正在测试所有端点...</h4>';
+            
+            const results = [];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(endpoint, {
+                        method: endpoint.includes('extract') ? 'POST' : 'GET',
+                        headers: endpoint.includes('extract') ? {
+                            'Content-Type': 'application/json',
+                        } : {},
+                        body: endpoint.includes('extract') ? JSON.stringify({ url: 'https://www.bilibili.com/video/BV1Jt52zDE3H' }) : undefined
+                    });
+                    const responseTime = Date.now() - startTime;
+                    
+                    if (response.ok) {
+                        results.push(`✅ ${endpoint} - 响应时间: ${responseTime}ms`);
+                    } else {
+                        results.push(`❌ ${endpoint} - HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    results.push(`❌ ${endpoint} - ${error.message}`);
+                }
+            }
+            
+            resultDiv.innerHTML = `
+                <h4>端点测试结果:</h4>
+                <ul>
+                    ${results.map(result => `<li>${result}</li>`).join('')}
+                </ul>
+            `;
+        }
+    </script>
+</body>
+</html>

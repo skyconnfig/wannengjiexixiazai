@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>下载功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #28a745;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📥 下载功能测试</h1>
+        <p>测试后端yt-dlp服务的下载功能</p>
+        
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="输入视频链接进行下载测试...">
+            <button id="downloadBtn" onclick="testDownload()">开始下载</button>
+        </div>
+        
+        <div id="progress" class="progress" style="display: none;">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div style="margin-top: 30px;">
+            <h3>测试链接示例：</h3>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                <p><strong>Bilibili:</strong> https://www.bilibili.com/video/BV1Jt52zDE3H</p>
+                <p><strong>YouTube:</strong> https://www.youtube.com/watch?v=dQw4w9WgXcQ</p>
+                <p><strong>注意:</strong> 下载的文件将保存在后端服务的 downloads 目录中</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isDownloading = false;
+
+        async function testDownload() {
+            const url = document.getElementById('urlInput').value.trim();
+            const downloadBtn = document.getElementById('downloadBtn');
+            const progressDiv = document.getElementById('progress');
+            const progressBar = document.getElementById('progressBar');
+            
+            if (!url) {
+                showResult('请输入URL', 'error');
+                return;
+            }
+            
+            if (isDownloading) {
+                showResult('下载正在进行中，请等待...', 'info');
+                return;
+            }
+            
+            isDownloading = true;
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = '下载中...';
+            
+            showResult('正在连接后端服务...', 'loading');
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '10%';
+            
+            try {
+                // 模拟进度更新
+                const progressInterval = setInterval(() => {
+                    const currentWidth = parseInt(progressBar.style.width) || 0;
+                    if (currentWidth < 90) {
+                        progressBar.style.width = (currentWidth + 10) + '%';
+                    }
+                }, 500);
+                
+                const response = await fetch('http://localhost:5001/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        url: url,
+                        format_id: 'best'
+                    })
+                });
+                
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`✅ 下载成功！
+
+文件已保存到后端服务的 downloads 目录
+消息: ${data.message}
+
+请检查后端服务运行目录下的 downloads 文件夹`, 'success');
+                } else {
+                    showResult(`❌ 下载失败: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ 网络错误: ${error.message}
+
+可能的原因:
+1. 后端服务未启动
+2. 网络连接问题
+3. URL不支持下载
+
+请确保后端服务正在运行: python backend/yt-dlp-server.py`, 'error');
+            } finally {
+                isDownloading = false;
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = '开始下载';
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 2000);
+            }
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+        
+        // 回车键支持
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !isDownloading) {
+                testDownload();
+            }
+        });
+        
+        // 页面加载时检查后端服务状态
+        window.onload = async function() {
+            try {
+                const response = await fetch('http://localhost:5001/api/health');
+                if (response.ok) {
+                    showResult('✅ 后端服务连接正常，可以开始下载测试', 'success');
+                } else {
+                    showResult('⚠️ 后端服务响应异常', 'error');
+                }
+            } catch (error) {
+                showResult('❌ 无法连接到后端服务，请确保服务正在运行', 'error');
+            }
+        };
+    </script>
+</body>
+</html>""

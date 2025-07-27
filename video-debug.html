@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-player {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            border-radius: 10px;
+        }
+        .iframe-container {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 视频播放调试工具</h1>
+    
+    <div class="container">
+        <h2>📋 测试视频解析和播放</h2>
+        <input type="text" id="testUrl" placeholder="输入Bilibili视频URL" style="width: 70%; padding: 8px;">
+        <button onclick="testVideoPlayback()">测试播放</button>
+        <button onclick="clearVideo()">清空</button>
+        <div id="parseResult"></div>
+    </div>
+
+    <div class="container">
+        <h2>🎥 视频播放区域</h2>
+        <div class="video-container" id="videoContainer">
+            <div style="color: #666; text-align: center;">
+                <p>📺 视频将在这里显示</p>
+                <p>请先输入视频URL并点击"测试播放"</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 播放方式测试</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div>
+                <h4>直接视频播放</h4>
+                <button onclick="testDirectVideo()">测试直接播放</button>
+                <div id="directResult"></div>
+            </div>
+            <div>
+                <h4>嵌入式播放器</h4>
+                <button onclick="testEmbedPlayer()">测试嵌入播放</button>
+                <div id="embedResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 调试日志</h2>
+        <button onclick="clearLog()">清空日志</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = {
+                'info': '#0ff',
+                'success': '#0f0',
+                'error': '#f00',
+                'warning': '#ff0'
+            }[type] || '#0ff';
+            
+            log.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+
+        function clearVideo() {
+            const container = document.getElementById('videoContainer');
+            container.innerHTML = `
+                <div style="color: #666; text-align: center;">
+                    <p>📺 视频将在这里显示</p>
+                    <p>请先输入视频URL并点击"测试播放"</p>
+                </div>
+            `;
+            addLog('视频区域已清空', 'info');
+        }
+
+        async function testVideoPlayback() {
+            const url = document.getElementById('testUrl').value.trim();
+            const resultDiv = document.getElementById('parseResult');
+            
+            if (!url) {
+                resultDiv.innerHTML = '<div class="error">请输入视频URL</div>';
+                return;
+            }
+            
+            addLog(`开始测试视频: ${url}`, 'info');
+            resultDiv.innerHTML = '<div class="info">正在解析视频...</div>';
+            
+            try {
+                // 调用后端API解析视频
+                const response = await fetch('http://localhost:5001/api/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`解析成功: ${data.title}`, 'success');
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ 解析成功</h4>
+                            <p><strong>标题:</strong> ${data.title}</p>
+                            <p><strong>时长:</strong> ${data.duration || '未知'}秒</p>
+                            <p><strong>格式数量:</strong> ${data.formats ? data.formats.length : 0}</p>
+                        </div>
+                    `;
+                    
+                    // 尝试播放视频
+                    if (data.formats && data.formats.length > 0) {
+                        playVideo(data, url);
+                    } else {
+                        // 使用嵌入式播放器
+                        playEmbeddedVideo(url, data.title);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                addLog(`解析失败: ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ 解析失败</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+                
+                // 尝试使用嵌入式播放器作为备用方案
+                if (url.includes('bilibili.com')) {
+                    addLog('尝试使用Bilibili嵌入式播放器', 'warning');
+                    playEmbeddedVideo(url, '未知标题');
+                }
+            }
+        }
+
+        function playVideo(data, originalUrl) {
+            addLog('尝试直接视频播放', 'info');
+            
+            // 选择最佳格式
+            const bestFormat = selectBestFormat(data.formats);
+            addLog(`选择格式: ${bestFormat.ext} ${bestFormat.height}p`, 'info');
+            
+            const container = document.getElementById('videoContainer');
+            container.innerHTML = `
+                <video class="video-player" controls autoplay>
+                    <source src="${bestFormat.url}" type="video/${bestFormat.ext}">
+                    您的浏览器不支持视频播放
+                </video>
+            `;
+            
+            const video = container.querySelector('video');
+            
+            video.addEventListener('loadstart', () => {
+                addLog('视频开始加载', 'info');
+            });
+            
+            video.addEventListener('canplay', () => {
+                addLog('视频可以播放', 'success');
+            });
+            
+            video.addEventListener('error', (e) => {
+                addLog(`视频播放错误: ${e.target.error?.message || '未知错误'}`, 'error');
+                
+                // 尝试嵌入式播放器作为备用方案
+                addLog('尝试使用嵌入式播放器', 'warning');
+                playEmbeddedVideo(originalUrl, data.title);
+            });
+        }
+
+        function playEmbeddedVideo(url, title) {
+            addLog('使用嵌入式播放器', 'info');
+            
+            let embedUrl = '';
+            
+            if (url.includes('bilibili.com')) {
+                // 提取Bilibili视频ID
+                const bvMatch = url.match(/bilibili\.com\/video\/(BV[a-zA-Z0-9]+)/);
+                const avMatch = url.match(/bilibili\.com\/video\/(av\d+)/);
+                
+                if (bvMatch) {
+                    embedUrl = `https://player.bilibili.com/player.html?bvid=${bvMatch[1]}&autoplay=1`;
+                    addLog(`使用BV号: ${bvMatch[1]}`, 'info');
+                } else if (avMatch) {
+                    const aid = avMatch[1].replace('av', '');
+                    embedUrl = `https://player.bilibili.com/player.html?aid=${aid}&autoplay=1`;
+                    addLog(`使用AV号: ${aid}`, 'info');
+                }
+            }
+            
+            if (embedUrl) {
+                const container = document.getElementById('videoContainer');
+                container.innerHTML = `
+                    <div class="iframe-container">
+                        <iframe src="${embedUrl}" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen>
+                        </iframe>
+                    </div>
+                `;
+                addLog(`嵌入式播放器已加载: ${embedUrl}`, 'success');
+            } else {
+                addLog('无法创建嵌入式播放器', 'error');
+            }
+        }
+
+        function selectBestFormat(formats) {
+            // 优先选择mp4格式，720p质量
+            const mp4Formats = formats.filter(f => 
+                f.ext === 'mp4' && 
+                f.vcodec !== 'none' && 
+                f.acodec !== 'none'
+            );
+            
+            if (mp4Formats.length > 0) {
+                // 按质量排序，选择720p或最接近的
+                mp4Formats.sort((a, b) => {
+                    const aHeight = a.height || 0;
+                    const bHeight = b.height || 0;
+                    
+                    // 优先720p
+                    if (aHeight === 720) return -1;
+                    if (bHeight === 720) return 1;
+                    
+                    // 其次选择接近720p的
+                    return Math.abs(aHeight - 720) - Math.abs(bHeight - 720);
+                });
+                
+                return mp4Formats[0];
+            }
+            
+            // 如果没有mp4，选择最佳可用格式
+            return formats.find(f => f.vcodec !== 'none' && f.acodec !== 'none') || formats[0];
+        }
+
+        function testDirectVideo() {
+            addLog('测试直接视频播放', 'info');
+            const container = document.getElementById('videoContainer');
+            const testVideoUrl = 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4';
+            
+            container.innerHTML = `
+                <video class="video-player" controls>
+                    <source src="${testVideoUrl}" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+            `;
+            
+            const video = container.querySelector('video');
+            video.addEventListener('canplay', () => {
+                document.getElementById('directResult').innerHTML = '<div class="success">✅ 直接播放正常</div>';
+                addLog('直接视频播放测试成功', 'success');
+            });
+            
+            video.addEventListener('error', () => {
+                document.getElementById('directResult').innerHTML = '<div class="error">❌ 直接播放失败</div>';
+                addLog('直接视频播放测试失败', 'error');
+            });
+        }
+
+        function testEmbedPlayer() {
+            addLog('测试嵌入式播放器', 'info');
+            const container = document.getElementById('videoContainer');
+            const embedUrl = 'https://player.bilibili.com/player.html?bvid=BV1Jt52zDE3H&autoplay=0';
+            
+            container.innerHTML = `
+                <div class="iframe-container">
+                    <iframe src="${embedUrl}" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                    </iframe>
+                </div>
+            `;
+            
+            document.getElementById('embedResult').innerHTML = '<div class="success">✅ 嵌入式播放器已加载</div>';
+            addLog('嵌入式播放器测试完成', 'success');
+        }
+
+        // 页面加载时设置默认URL
+        window.onload = function() {
+            document.getElementById('testUrl').value = 'https://www.bilibili.com/video/BV1Jt52zDE3H?spm_id_from=333.788.player.switch';
+            addLog('视频调试工具已加载', 'success');
+        };
+    </script>
+</body>
+</html>
